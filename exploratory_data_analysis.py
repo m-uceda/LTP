@@ -29,8 +29,8 @@ def load_data(file_path):
     return df
 
 
-def basic_info(df):
-    print("----- BASIC INFO -----")
+def basic_info(df, language):
+    print(f"\n----- BASIC INFO {language.upper()} -----")
     print(df.info)
     print(df.columns)
 
@@ -106,7 +106,7 @@ def word_count_comparison(df_en, df_es):
 
 
 if __name__ == '__main__':
-    en_mapping = "Task_Data/Semeval2018-Task2-EmojiPrediction/mapping/us_mapping.txt"
+    en_mapping = "us_mapping.txt"
     emoji_mapping = get_mapping(en_mapping)
 
     en_data_path = "Karim-Gamal/SemEval-2018-Task-2-english-emojis"
@@ -115,8 +115,8 @@ if __name__ == '__main__':
     en_dataframe = load_data(en_data_path)
     es_dataframe = load_data(es_data_path)
 
-    basic_info(en_dataframe)
-    basic_info(es_dataframe)
+    basic_info(en_dataframe, 'English')
+    basic_info(es_dataframe, 'Spanish')
 
     class_distribution(en_dataframe, emoji_mapping, 'English')
     class_distribution(es_dataframe, False, 'Mexican Spanish')
