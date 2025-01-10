@@ -1,9 +1,40 @@
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer, DataCollatorWithPadding
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer, DataCollatorWithPadding, AutoConfig
 
 from datasets import Dataset, load_dataset, ClassLabel
 from typing import Tuple
 from sklearn.metrics import accuracy_score
 import torch
+from torch import nn
+
+class CustomTrainer(Trainer):
+    def compute_loss(self, model, inputs, return_outputs=False):
+        labels = inputs.get("labels")
+        # Forward pass
+        outputs = model(**inputs)
+        logits = outputs.get('logits')
+
+        # Compute class weights based on dataset distribution
+        class_distribution = [
+            21.65, 10.51, 10.31, 5.38, 5.04, 4.72, 4.36, 3.67, 3.38, 3.30, 
+            3.27, 3.08, 2.79, 2.74, 2.73, 2.72, 2.66, 2.59, 2.58, 2.50
+        ]
+        total = sum(class_distribution)
+        class_weights = [total / freq for freq in class_distribution]
+
+        # Normalize weights to avoid instability
+        max_weight = max(class_weights)
+        class_weights = [weight / max_weight for weight in class_weights]
+
+        # Convert to tensor and ensure it matches model device
+        class_weights_tensor = torch.tensor(class_weights, dtype=torch.float).to(model.device)
+
+
+        # Define loss function with class weights
+        loss_fct = nn.CrossEntropyLoss(weight=class_weights_tensor)
+
+        loss = loss_fct(logits.view(-1, model.config.num_labels), labels.view(-1))
+
+        return (loss, outputs) if return_outputs else loss
 
 
 def load_model_and_tokenizer(model_name: str) -> Tuple[AutoTokenizer, AutoModelForSequenceClassification]:
@@ -20,7 +51,8 @@ def load_model_and_tokenizer(model_name: str) -> Tuple[AutoTokenizer, AutoModelF
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     tokenizer = AutoTokenizer.from_pretrained(model_name, num_labels=20)
-    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=20).to(device)
+    config = AutoConfig.from_pretrained(model_name, num_labels=20)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name, config=config).to(device)
     return tokenizer, model
 
 def load_and_split_dataset(dataset_name: str) -> Tuple[Dataset, Dataset]:
@@ -101,7 +133,7 @@ def get_trainer(
 
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
-    trainer = Trainer(
+    trainer = CustomTrainer(
         model=model,
         args=training_args,
         train_dataset=tokenized_train,
