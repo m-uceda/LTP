@@ -41,16 +41,9 @@ class CustomTrainer(Trainer):
         logits = outputs.get('logits')
 
         # Compute class weights based on dataset distribution
-        #class_distribution = [
-        #    21.65, 10.51, 10.31, 5.38, 5.04, 4.72, 4.36, 3.67, 3.38, 3.30, 
-        #    3.27, 3.08, 2.79, 2.74, 2.73, 2.72, 2.66, 2.59, 2.58, 2.50
-        #]
-
-        # Example Usage
-        # Assuming `train_dataset` is a HuggingFace Dataset object with a 'label' column
         class_distribution = calculate_class_distribution(self.train_dataset)
 
-        total = sum(class_distribution)
+        #total = sum(class_distribution)
         #class_weights = [total / freq for freq in class_distribution]
         class_weights = [1 / freq for freq in class_distribution]
 
