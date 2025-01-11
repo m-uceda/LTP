@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import rcParams
+import re
 
 # I can't currently figure out how to get a font that actually shows the emojis nicely.
 rcParams['font.family'] = 'Segoe UI Emoji'
@@ -25,6 +26,10 @@ def map_emojis(mapping, label):
 
 def load_data(file_path):
     data = load_dataset(file_path)
+    return data
+
+
+def change_to_pandas(data):
     df = pd.DataFrame(data['train'])
     return df
 
@@ -105,15 +110,9 @@ def word_count_comparison(df_en, df_es):
     plt.show()
 
 
-if __name__ == '__main__':
+def exploratory_analysis(en_dataframe, es_dataframe):
     en_mapping = "us_mapping.txt"
     emoji_mapping = get_mapping(en_mapping)
-
-    en_data_path = "Karim-Gamal/SemEval-2018-Task-2-english-emojis"
-    es_data_path = "guillermoruiz/MexEmojis"
-
-    en_dataframe = load_data(en_data_path)
-    es_dataframe = load_data(es_data_path)
 
     basic_info(en_dataframe, 'English')
     basic_info(es_dataframe, 'Spanish')
@@ -128,3 +127,34 @@ if __name__ == '__main__':
     word_count_by_class(en_dataframe, emoji_mapping, 'sentence', 'English')
     word_count_by_class(es_dataframe, False, 'text', 'Mexican Spanish')
     word_count_comparison(en_dataframe, es_dataframe)
+
+
+def remove_tags(ds):
+    ds["text"] = re.sub("_URL ", "", ds["text"])
+    return ds
+
+
+def preprocess_es_data(ds):
+    print(f"\n----- ORIGINAL MEXICAN SPANISH DATA -----")
+    print(f"First Row: {ds['train'][0]}")
+    print(f"Second Row: {ds['train'][1]}")
+    print(f"Shape: {ds['train'].shape}")
+
+    ds['train'] = ds['train'].map(remove_tags)
+
+    print(f"\n----- MODIFIED MEXICAN SPANISH DATA -----")
+    print(f"First Row: {ds['train'][0]}")
+    print(f"Second Row: {ds['train'][1]}")
+    print(f"Shape: {ds['train'].shape}")
+
+
+if __name__ == '__main__':
+    en_data_path = "Karim-Gamal/SemEval-2018-Task-2-english-emojis"
+    es_data_path = "guillermoruiz/MexEmojis"
+
+    #dataframe_en = change_to_pandas(load_data(en_data_path))
+    dataset_es = load_data(es_data_path)
+    dataframe_es = change_to_pandas(dataset_es)
+
+    #exploratory_analysis(dataframe_en, dataframe_es)
+    preprocess_es_data(dataset_es)
