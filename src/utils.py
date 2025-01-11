@@ -7,6 +7,31 @@ import torch
 from torch import nn
 import seaborn as sns
 import matplotlib.pyplot as plt
+from collections import Counter
+
+def calculate_class_distribution(dataset, label_column="label", num_classes=20):
+    """
+    Calculate the class distribution in a dataset.
+
+    Args:
+        dataset: A HuggingFace Dataset object or any iterable with label data.
+        label_column (str): The name of the column containing the labels.
+        num_classes (int): The total number of classes.
+
+    Returns:
+        list: A list of length `num_classes` where each element represents 
+              the number of occurrences of the corresponding label.
+    """
+    # Extract the labels from the dataset
+    labels = dataset[label_column]
+    
+    # Count the occurrences of each label
+    label_counts = Counter(labels)
+    
+    # Create a list with counts for each class (0 to num_classes - 1)
+    class_distribution = [label_counts.get(i, 0) for i in range(num_classes)]
+    
+    return class_distribution
 
 class CustomTrainer(Trainer):
     def compute_loss(self, model, inputs, return_outputs=False):
@@ -16,12 +41,18 @@ class CustomTrainer(Trainer):
         logits = outputs.get('logits')
 
         # Compute class weights based on dataset distribution
-        class_distribution = [
-            21.65, 10.51, 10.31, 5.38, 5.04, 4.72, 4.36, 3.67, 3.38, 3.30, 
-            3.27, 3.08, 2.79, 2.74, 2.73, 2.72, 2.66, 2.59, 2.58, 2.50
-        ]
+        #class_distribution = [
+        #    21.65, 10.51, 10.31, 5.38, 5.04, 4.72, 4.36, 3.67, 3.38, 3.30, 
+        #    3.27, 3.08, 2.79, 2.74, 2.73, 2.72, 2.66, 2.59, 2.58, 2.50
+        #]
+
+        # Example Usage
+        # Assuming `train_dataset` is a HuggingFace Dataset object with a 'label' column
+        class_distribution = calculate_class_distribution(self.train_dataset)
+
         total = sum(class_distribution)
-        class_weights = [total / freq for freq in class_distribution]
+        #class_weights = [total / freq for freq in class_distribution]
+        class_weights = [1 / freq for freq in class_distribution]
 
         # Normalize weights to avoid instability
         max_weight = max(class_weights)
@@ -129,7 +160,7 @@ def get_trainer(
         learning_rate=2e-5,               # Learning rate
         per_device_train_batch_size=8,    # Batch size for training
         per_device_eval_batch_size=8,     # Batch size for evaluation
-        num_train_epochs=1,               # Number of training epochs
+        num_train_epochs=3,               # Number of training epochs
         weight_decay=0.01                 # Weight decay for optimization
     )
 
@@ -158,6 +189,7 @@ def evaluate_performance(model, tokenizer, test_dataset) -> dict:
     Returns:
         dict: A dictionary containing the computed metrics and their values.
     """
+    
     all_labels = []
     all_predictions = []
 

@@ -12,14 +12,13 @@ def main():
 
     # Split data in train, test
     train_dataset, test_dataset = load_and_split_dataset("Karim-Gamal/SemEval-2018-Task-2-english-emojis")
-    train_dataset = train_dataset.select(range(1000))
+    train_dataset = train_dataset
 
     # Tokenize data and extract validation set
     tokenized_train, tokenized_validate = tokenize(train_dataset, tokenizer)
 
-    # Fine tune model (or retrieve)
+    # Fine tune model (or retrieve by commenting next 4 lines)
     trainer = get_trainer(model, tokenizer, tokenized_train, tokenized_validate)
-    
     trainer.train()
     model.save_pretrained("./fine-tuned-model-test")
     tokenizer.save_pretrained("./fine-tuned-model-test")
@@ -28,7 +27,7 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained("./fine-tuned-model-test")
 
     # Evaluate performance on test set
-    performance = evaluate_performance(fine_tuned_model, tokenizer, test_dataset.select(range(16)))
+    performance = evaluate_performance(fine_tuned_model, tokenizer, test_dataset)
 
     print(performance)
 
