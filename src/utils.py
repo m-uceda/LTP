@@ -2,9 +2,11 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trai
 
 from datasets import Dataset, load_dataset, ClassLabel
 from typing import Tuple
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 import torch
 from torch import nn
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 class CustomTrainer(Trainer):
     def compute_loss(self, model, inputs, return_outputs=False):
@@ -146,7 +148,7 @@ def get_trainer(
 
 def evaluate_performance(model, tokenizer, test_dataset) -> dict:
     """
-    Evaluate the performance of a model on a test dataset using multiple metrics.
+    Evaluate the performance of a model on a test dataset using multiple metrics and plot a confusion matrix.
 
     Args:
         model: The model to evaluate.
@@ -174,6 +176,10 @@ def evaluate_performance(model, tokenizer, test_dataset) -> dict:
         all_labels.append(label)
         all_predictions.append(predicted_label)
 
+    # Determine class names from the labels
+    n_labels = len(set(all_labels))
+    class_names = [str(i) for i in range(n_labels)]
+
     metrics = {
         "accuracy": accuracy_score(all_labels, all_predictions),
         "precision": precision_score(all_labels, all_predictions, average="weighted"),
@@ -181,4 +187,33 @@ def evaluate_performance(model, tokenizer, test_dataset) -> dict:
         "f1": f1_score(all_labels, all_predictions, average="weighted")
     }
 
+    # Plot confusion matrix
+    plot_confusion_matrix(all_labels, all_predictions, class_names, save_path="confusion_matrix.png")
+
     return metrics
+
+def plot_confusion_matrix(all_labels, all_predictions, class_names, save_path=None):
+    """
+    Plot a confusion matrix for the model predictions.
+
+    Args:
+        all_labels: True labels of the test dataset.
+        all_predictions: Predicted labels by the model.
+        class_names: List of class names corresponding to the labels.
+        save_path: Path to save the confusion matrix image (optional).
+
+    Returns:
+        None
+    """
+    cm = confusion_matrix(all_labels, all_predictions)
+    plt.figure(figsize=(10, 7))
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=class_names, yticklabels=class_names)
+    plt.xlabel("Predicted Labels")
+    plt.ylabel("True Labels")
+    plt.title("Confusion Matrix")
+
+    if save_path:
+        plt.savefig(save_path)
+        print(f"Confusion matrix saved to {save_path}")
+
+    plt.show()
