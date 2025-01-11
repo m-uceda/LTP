@@ -2,7 +2,7 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trai
 
 from datasets import Dataset, load_dataset, ClassLabel
 from typing import Tuple
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import torch
 from torch import nn
 
@@ -144,18 +144,17 @@ def get_trainer(
 
     return trainer
 
-def evaluate_performance(model, tokenizer, test_dataset, metric=accuracy_score) -> dict:
+def evaluate_performance(model, tokenizer, test_dataset) -> dict:
     """
-    Evaluate the performance of a model on a test dataset using a specified metric.
+    Evaluate the performance of a model on a test dataset using multiple metrics.
 
     Args:
         model: The model to evaluate.
         tokenizer: The tokenizer to preprocess the input data.
         test_dataset: The test dataset.
-        metric: The metric to compute (default: accuracy_score).
 
     Returns:
-        dict: A dictionary containing the computed metric and its value.
+        dict: A dictionary containing the computed metrics and their values.
     """
     all_labels = []
     all_predictions = []
@@ -175,9 +174,11 @@ def evaluate_performance(model, tokenizer, test_dataset, metric=accuracy_score) 
         all_labels.append(label)
         all_predictions.append(predicted_label)
 
-    performance = metric(all_labels, all_predictions)
-
-    return {
-        "metric_name": metric.__name__,
-        "metric_value": performance
+    metrics = {
+        "accuracy": accuracy_score(all_labels, all_predictions),
+        "precision": precision_score(all_labels, all_predictions, average="weighted"),
+        "recall": recall_score(all_labels, all_predictions, average="weighted"),
+        "f1": f1_score(all_labels, all_predictions, average="weighted")
     }
+
+    return metrics
