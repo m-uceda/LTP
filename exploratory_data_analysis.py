@@ -9,6 +9,11 @@ import re
 rcParams['font.family'] = 'Segoe UI Emoji'
 
 
+def load_data(file_path):
+    data = load_dataset(file_path)
+    return data
+
+
 def get_mapping(file_path):
     file = open(file_path, "r", encoding="utf-8").readlines()
     mapping = []
@@ -22,11 +27,6 @@ def map_emojis(mapping, label):
         return mapping[label][1]
     else:
         return label
-
-
-def load_data(file_path):
-    data = load_dataset(file_path)
-    return data
 
 
 def change_to_pandas(data):
@@ -58,9 +58,9 @@ def class_distribution(df, emoji_map, language):
     plt.show()
 
 
-def character_count_by_class(df, emoji_map, column_name, language):
+def character_count_by_class(df, emoji_map, language):
     print(f"\n----- CHARACTER COUNT {language.upper()}-----")
-    df['char_count'] = df[column_name].apply(len)
+    df['char_count'] = df['sentence'].apply(len)
     print(f"Range: {df['char_count'].min():.2f} to {df['char_count'].max():.2f}")
     print(
         f"Character Count mean = {df['char_count'].mean():.2f}, median = {df['char_count'].median()}, and standard deviation = {df['char_count'].std():.2f}")
@@ -77,18 +77,9 @@ def character_count_by_class(df, emoji_map, column_name, language):
     plt.show()
 
 
-def character_count_comparison(df_en, df_es):
-    plt.boxplot((df_en['char_count'], df_es['char_count']),
-                tick_labels=('English', 'Mexican Spanish'))  # maybe use this to compare the datasets
-    plt.title('Character Count')
-    plt.xlabel("Corpus")
-    plt.ylabel('Number of Characters')
-    plt.show()
-
-
-def word_count_by_class(df, emoji_map, column_name, language):
+def word_count_by_class(df, emoji_map, language):
     print(f"\n----- WORD COUNT {language.upper()}-----")
-    df['word_count'] = df[column_name].apply(lambda x: len(x.split()))
+    df['word_count'] = df['sentence'].apply(lambda x: len(x.split()))
     print(f"Range: {df['word_count'].min():.2f} to {df['word_count'].max():.2f}")
     print(
         f"Word Count mean = {df['word_count'].mean():.2f}, median = {df['word_count'].median()}, and standard deviation = {df['word_count'].std():.2f}")
@@ -105,36 +96,37 @@ def word_count_by_class(df, emoji_map, column_name, language):
     plt.show()
 
 
-def word_count_comparison(df_en, df_es):
-    plt.boxplot((df_en['word_count'], df_es['word_count']),
-                tick_labels=('English', 'Mexican Spanish'))  # maybe use this to compare the datasets
-    plt.title('Word Count')
-    plt.ylabel('Number of Words')
-    plt.xlabel("Corpus")
+def plot_comparison(df_en, df_es_1, df_es_2, df_es_3, label, type):
+    plt.boxplot((df_en[label], df_es_1[label], df_es_2[label], df_es_3[label]),
+                tick_labels=('English', 'Mexican Spanish Unprocessed', "Mexican Spanish without Emojis",
+                             "Mexican Spanish with Emojis"))
+    plt.title(f"{type} Count")
+    plt.ylabel(f"Number of {type}s")
+    plt.xlabel(f"Corpus")
     plt.show()
 
 
-def exploratory_analysis(en_dataframe, es_dataframe):
+def individual_analysis(df, version, mapping):
+    basic_info(df, version)
+    class_distribution(df, mapping, version)
+    character_count_by_class(df, mapping, version)
+    word_count_by_class(df, mapping, version)
+
+
+def exploratory_analysis(en_df, es_df_original, es_df_without_emojis, es_df_with_emojis):
     en_mapping = "us_mapping.txt"
     emoji_mapping = get_mapping(en_mapping)
 
-    basic_info(en_dataframe, 'English')
-    basic_info(es_dataframe, 'Spanish')
+    individual_analysis(en_df, "English", emoji_mapping)
+    individual_analysis(es_df_original, "Mexican Spanish Unprocessed", False)
+    individual_analysis(es_df_without_emojis, "Mexican Spanish without Emojis", False)
+    individual_analysis(es_df_with_emojis, "Mexican Spanish with Emojis", False)
 
-    class_distribution(en_dataframe, emoji_mapping, 'English')
-    class_distribution(es_dataframe, False, 'Mexican Spanish')
-
-    character_count_by_class(en_dataframe, emoji_mapping, 'sentence', 'English')
-    character_count_by_class(es_dataframe, False, 'text', 'Mexican Spanish')
-    character_count_comparison(en_dataframe, es_dataframe)
-
-    word_count_by_class(en_dataframe, emoji_mapping, 'sentence', 'English')
-    word_count_by_class(es_dataframe, False, 'text', 'Mexican Spanish')
-    word_count_comparison(en_dataframe, es_dataframe)
+    plot_comparison(en_df, es_df_original, es_df_without_emojis, es_df_with_emojis, 'word_count', "Word")
+    plot_comparison(en_df, es_df_original, es_df_without_emojis, es_df_with_emojis, 'char_count', "Character")
 
 
-def remove_emojis(text):
-    # Define the emoji pattern
+def remove_emojis_regex(text):
     emoji_pattern = re.compile(
         "["
         "\U0001F600-\U0001F64F"  # emoticons
@@ -153,45 +145,43 @@ def remove_emojis(text):
     return emoji_pattern.sub(r'', text)
 
 
+def remove_emojis(ds):
+    ds["sentence"] = remove_emojis_regex(ds["sentence"])
+    return ds
+
+
 def remove_tags(ds):
     # Take away the location tag and take away placeholders for emoijs, URLs, etc.
-    ds["text"] = re.sub("^.+ _GEO|_[a-zA-Z]{3}", "", ds["text"])
-    # Remove emojis
-    ds["text"] = remove_emojis(ds["text"])
+    ds["sentence"] = re.sub("^.+ _GEO|_[a-zA-Z]{3}", "", ds["sentence"])
+
     # Make sure there are no double whitespaces or whitespaces in the beginning or end
-    ds["text"] = re.sub(" {2,}", " ", ds["text"])
-    ds["text"] = re.sub("^ | $", "", ds["text"])
+    ds["sentence"] = re.sub(" {2,}", " ", ds["sentence"])
+    ds["sentence"] = re.sub("^ | $", "", ds["sentence"])
     return ds
 
 
 def preprocess_es_data(ds):
-    print(f"\n----- ORIGINAL MEXICAN SPANISH DATA -----")
-    print(f"First Row: {ds['train'][0]}")
-    print(f"First Row: {ds['train'][162]}")
-    print(f"First Row: {ds['train'][27238]}")
-    print(f"First Row: {ds['train'][27283]}")
-    print(f"Second Row: {ds['train'][36139]}")
+    ds_without = ds
+    # Remove emojis
+    ds_without = ds_without.map(remove_emojis)
+    # Remove placeholders
+    ds = ds.map(remove_tags)
+    ds_without = ds_without.map(remove_tags)
 
-    ds['train'] = ds['train'].map(remove_tags)
-
-    print(f"\n----- MODIFIED MEXICAN SPANISH DATA -----")
-    print(f"First Row: {ds['train'][0]}")
-    print(f"First Row: {ds['train'][162]}")
-    print(f"First Row: {ds['train'][27238]}")
-    print(f"First Row: {ds['train'][27283]}")
-    print(f"Second Row: {ds['train'][36139]}")
-    return ds
+    print(f"with: {ds['train'][27283]}")
+    print(f"Without: {ds_without['train'][27283]}")
+    return ds_without, ds
 
 
 if __name__ == '__main__':
+    # load data
     en_data_path = "Karim-Gamal/SemEval-2018-Task-2-english-emojis"
     es_data_path = "guillermoruiz/MexEmojis"
-
-    dataframe_en = change_to_pandas(load_data(en_data_path))
+    dataset_en = load_data(en_data_path)
     dataset_es = load_data(es_data_path)
-    dataframe_es = change_to_pandas(dataset_es)
+    dataset_es = dataset_es.rename_column("text", "sentence")
 
-    exploratory_analysis(dataframe_en, dataframe_es)
-    modified_dataset_es = preprocess_es_data(dataset_es)
-    modified_dataframe_es = change_to_pandas(modified_dataset_es)
-    exploratory_analysis(dataframe_en, modified_dataframe_es)
+    dataset_es_without_emojis, dataset_es_with_emojis = preprocess_es_data(dataset_es)
+    # copy until here
+
+    exploratory_analysis(change_to_pandas(dataset_en), change_to_pandas(dataset_es), change_to_pandas(dataset_es_without_emojis), change_to_pandas(dataset_es_with_emojis))
