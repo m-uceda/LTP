@@ -1,5 +1,4 @@
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer, DataCollatorWithPadding, AutoConfig
-
 from datasets import Dataset, load_dataset, ClassLabel
 from typing import Tuple
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
@@ -8,6 +7,22 @@ from torch import nn
 import seaborn as sns
 import matplotlib.pyplot as plt
 from collections import Counter
+from torch.utils.data import DataLoader
+from sklearn.model_selection import train_test_split
+
+def get_subset(dataset, size: int) -> Dataset:
+    # Convert dataset to pandas DataFrame for stratification
+    df = dataset.to_pandas()
+
+    # Perform stratified sampling
+    train_df, _ = train_test_split(
+        df,
+        train_size=size,
+        stratify=df['label'],  # Column to stratify by
+        random_state=42
+    )
+
+    return Dataset.from_pandas(train_df)
 
 def calculate_class_distribution(dataset, label_column="label", num_classes=20):
     """
@@ -34,30 +49,29 @@ def calculate_class_distribution(dataset, label_column="label", num_classes=20):
     return class_distribution
 
 class CustomTrainer(Trainer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Cache class distribution during initialization
+        self.class_distribution = calculate_class_distribution(self.train_dataset)
+        total = sum(self.class_distribution)
+        self.class_weights = [total / freq if freq > 0 else 0.0 for freq in self.class_distribution]
+        
+        # Normalize class weights
+        max_weight = max(self.class_weights)
+        self.class_weights = [weight / max_weight for weight in self.class_weights]
+        self.class_weights_tensor = torch.tensor(self.class_weights, dtype=torch.float)
+
     def compute_loss(self, model, inputs, return_outputs=False):
         labels = inputs.get("labels")
         # Forward pass
         outputs = model(**inputs)
-        logits = outputs.get('logits')
+        logits = outputs.get("logits")
 
-        # Compute class weights based on dataset distribution
-        class_distribution = calculate_class_distribution(self.train_dataset)
-
-        #total = sum(class_distribution)
-        #class_weights = [total / freq for freq in class_distribution]
-        class_weights = [1 / freq for freq in class_distribution]
-
-        # Normalize weights to avoid instability
-        max_weight = max(class_weights)
-        class_weights = [weight / max_weight for weight in class_weights]
-
-        # Convert to tensor and ensure it matches model device
-        class_weights_tensor = torch.tensor(class_weights, dtype=torch.float).to(model.device)
-
+        # Ensure weights are on the correct device
+        self.class_weights_tensor = self.class_weights_tensor.to(model.device)
 
         # Define loss function with class weights
-        loss_fct = nn.CrossEntropyLoss(weight=class_weights_tensor)
-
+        loss_fct = nn.CrossEntropyLoss(weight=self.class_weights_tensor)
         loss = loss_fct(logits.view(-1, model.config.num_labels), labels.view(-1))
 
         return (loss, outputs) if return_outputs else loss
@@ -125,8 +139,8 @@ def tokenize(dataset: Dataset, tokenizer: AutoTokenizer) -> Tuple[Dataset, Datas
     #split = dataset.train_test_split(test_size=0.2)
     #split = dataset.train_test_split(test_size=50000 / len(dataset['sentence']))
 
-    train_dataset = split["train"].map(preprocess_function, batched=True)
-    validate_dataset = split["test"].map(preprocess_function, batched=True)
+    train_dataset = split["train"].map(preprocess_function, batched=True, batch_size=64)
+    validate_dataset = split["test"].map(preprocess_function, batched=True, batch_size=64)
 
     return train_dataset, validate_dataset
 
@@ -149,11 +163,11 @@ def get_trainer(
     """
     training_args = TrainingArguments(
         output_dir="./results",          # Directory for model outputs
-        evaluation_strategy="epoch",    # Evaluate at the end of each epoch
+        eval_strategy="epoch",    # Evaluate at the end of each epoch
         learning_rate=2e-5,               # Learning rate
-        per_device_train_batch_size=8,    # Batch size for training
-        per_device_eval_batch_size=8,     # Batch size for evaluation
-        num_train_epochs=3,               # Number of training epochs
+        per_device_train_batch_size=16,    # Batch size for training
+        per_device_eval_batch_size=32,     # Batch size for evaluation
+        num_train_epochs=1,               # Number of training epochs
         weight_decay=0.01                 # Weight decay for optimization
     )
 
@@ -182,24 +196,28 @@ def evaluate_performance(model, tokenizer, test_dataset) -> dict:
     Returns:
         dict: A dictionary containing the computed metrics and their values.
     """
-    
+    model.eval()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+
     all_labels = []
     all_predictions = []
 
-    for data in test_dataset:
-        input_string = data['sentence']
-        label = data['label']
+    data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
+    dataloader = DataLoader(test_dataset, batch_size=32, collate_fn=data_collator)
 
-        inputs = tokenizer(input_string, return_tensors="pt", padding=True)
+    for batch in dataloader:
+        labels = batch["labels"].to(device)
+        inputs = {k: v.to(device) for k, v in batch.items() if k != "labels"}
 
         with torch.no_grad():
             outputs = model(**inputs)
             logits = outputs.logits
 
-        predicted_label = torch.argmax(logits, dim=1).item()
+        predictions = torch.argmax(logits, dim=1)
 
-        all_labels.append(label)
-        all_predictions.append(predicted_label)
+        all_labels.extend(labels.cpu().tolist())
+        all_predictions.extend(predictions.cpu().tolist())
 
     # Determine class names from the labels
     n_labels = len(set(all_labels))
