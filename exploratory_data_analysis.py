@@ -168,8 +168,8 @@ def preprocess_es_data(ds):
     ds = ds.map(remove_tags)
     ds_without = ds_without.map(remove_tags)
 
-    print(f"with: {ds['train'][27283]}")
-    print(f"Without: {ds_without['train'][27283]}")
+    print(f"with: {ds[27283]}")
+    print(f"Without: {ds_without[27283]}")
     return ds_without, ds
 
 

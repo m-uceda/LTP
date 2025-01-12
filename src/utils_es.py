@@ -24,7 +24,7 @@ def get_subset(dataset, size: int) -> Dataset:
 
     return Dataset.from_pandas(train_df)
 
-def calculate_class_distribution(dataset, label_column="label", num_classes=20):
+def calculate_class_distribution(dataset, label_column="label", num_classes=12):
     """
     Calculate the class distribution in a dataset.
 
@@ -90,8 +90,8 @@ def load_model_and_tokenizer(model_name: str) -> Tuple[AutoTokenizer, AutoModelF
             - model (AutoModelForSequenceClassification): The model to load.
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    tokenizer = AutoTokenizer.from_pretrained(model_name, num_labels=20)
-    config = AutoConfig.from_pretrained(model_name, num_labels=20)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, num_labels=12)
+    config = AutoConfig.from_pretrained(model_name, num_labels=12)
     model = AutoModelForSequenceClassification.from_pretrained(model_name, config=config).to(device)
     return tokenizer, model
 
@@ -131,7 +131,7 @@ def tokenize(dataset: Dataset, tokenizer: AutoTokenizer) -> Tuple[Dataset, Datas
 
     # Convert label column to ClassLabel
     if not isinstance(dataset.features["label"], ClassLabel):
-        dataset = dataset.cast_column("label", ClassLabel(num_classes=20))
+        dataset = dataset.cast_column("label", ClassLabel(num_classes=12))
 
     # Stratified split
     split = dataset.train_test_split(test_size=0.2, stratify_by_column='label')
