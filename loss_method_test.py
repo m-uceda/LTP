@@ -124,17 +124,6 @@ def run_loss_test(
 
 def main():
     """The main method of this script."""
-
-    # English (weighted loss)
-    run_loss_test(
-        model_name="google-bert/bert-base-multilingual-cased", 
-        dataset_name="Karim-Gamal/SemEval-2018-Task-2-english-emojis",
-        num_classes=20,
-        file_name="CM_english_subset_weightedloss.png",
-        mapping_file="us_mapping.txt",
-        performance_message="Performance English subset with weighted loss:",
-        trainer_type="weighted"
-        )
     
     # English (standard loss)
     run_loss_test(
@@ -147,6 +136,17 @@ def main():
         trainer_type="standard"
         )
     
+    # English (weighted loss)
+    run_loss_test(
+        model_name="google-bert/bert-base-multilingual-cased", 
+        dataset_name="Karim-Gamal/SemEval-2018-Task-2-english-emojis",
+        num_classes=20,
+        file_name="CM_english_subset_weightedloss.png",
+        mapping_file="us_mapping.txt",
+        performance_message="Performance English subset with weighted loss:",
+        trainer_type="weighted"
+        )
+
     # Spansih (not preprocessed)
     # Standard loss
     run_loss_test(
