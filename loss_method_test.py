@@ -1,6 +1,47 @@
 
 from src.utils import load_model_and_tokenizer, load_and_split_dataset, get_trainer, tokenize, evaluate_performance, get_subset
+from exploratory_data_analysis import preprocess_es_data
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from datasets import Dataset
 import os
+
+def train_and_get_performance(
+        train_dataset: Dataset,
+        test_dataset: Dataset,
+        tokenizer: AutoTokenizer, 
+        num_classes: int,
+        model: AutoModelForSequenceClassification,
+        file_name: str,
+        mapping_file: str,
+        trainer_type: str
+    ):
+    """
+    
+    """
+    # Tokenize data and extract validation set
+    tokenized_train, tokenized_validate = tokenize(
+        dataset=train_dataset,
+        tokenizer=tokenizer,
+        num_classes=num_classes,
+        test_size=100/900)
+
+    # Fine tune model (or retrieve by commenting next 4 lines)
+    trainer = get_trainer(model, tokenizer, tokenized_train, tokenized_validate, trainer_type)
+    trainer.train()
+
+    folder_path = "confusion matrices"
+    os.makedirs(folder_path, exist_ok=True)
+    sav_path = os.path.join(folder_path, file_name)
+
+    # Evaluate performance on test set
+    performance = evaluate_performance(
+        model=model, 
+        tokenizer=tokenizer, 
+        test_dataset=test_dataset,
+        mapping_file=mapping_file,
+        save_path=sav_path)
+
+    return performance
 
 def run_loss_test(
         model_name: str, 
@@ -24,28 +65,54 @@ def run_loss_test(
     subset_to_train = get_subset(train_dataset, size=900)
     subset_to_test = get_subset(test_dataset, size=100)
 
-    # Tokenize data and extract validation set
-    tokenized_train, tokenized_validate = tokenize(
-        dataset=subset_to_train,
-        tokenizer=tokenizer,
-        num_classes=num_classes,
-        test_size=100/900)
+    if dataset_name == "guillermoruiz/MexEmojis":
+        train_es_without_emojis, train_es_with_emojis = preprocess_es_data(subset_to_train)
+        test_es_without_emojis, test_es_with_emojis = preprocess_es_data(subset_to_test)
 
-    # Fine tune model (or retrieve by commenting next 4 lines)
-    trainer = get_trainer(model, tokenizer, tokenized_train, tokenized_validate, trainer_type)
-    trainer.train()
-
-    folder_path = "confusion matrices"
-    os.makedirs(folder_path, exist_ok=True)
-    sav_path = os.path.join(folder_path, file_name)
-
-    # Evaluate performance on test set
-    performance = evaluate_performance(
-        model=model, 
-        tokenizer=tokenizer, 
-        test_dataset=subset_to_test,
-        mapping_file=mapping_file,
-        save_path=sav_path)
+    if spanish_data_prep == None:
+        performance = train_and_get_performance(
+            train_dataset=subset_to_train,
+            test_dataset=subset_to_test,
+            tokenizer=tokenizer, 
+            num_classes=num_classes,
+            model=model,
+            file_name=file_name,
+            mapping_file=mapping_file,
+            trainer_type=trainer_type
+        )
+    elif spanish_data_prep == "not preprocessed":
+        performance = train_and_get_performance(
+            train_dataset=subset_to_train,
+            test_dataset=subset_to_test,
+            tokenizer=tokenizer, 
+            num_classes=num_classes,
+            model=model,
+            file_name=file_name,
+            mapping_file=mapping_file,
+            trainer_type=trainer_type
+        )
+    elif spanish_data_prep == "with emojis":
+        performance = train_and_get_performance(
+            train_dataset=train_es_with_emojis,
+            test_dataset=test_es_with_emojis,
+            tokenizer=tokenizer, 
+            num_classes=num_classes,
+            model=model,
+            file_name=file_name,
+            mapping_file=mapping_file,
+            trainer_type=trainer_type
+        )
+    elif spanish_data_prep == "without emojis":
+        performance = train_and_get_performance(
+            train_dataset=train_es_without_emojis,
+            test_dataset=test_es_without_emojis,
+            tokenizer=tokenizer, 
+            num_classes=num_classes,
+            model=model,
+            file_name=file_name,
+            mapping_file=mapping_file,
+            trainer_type=trainer_type
+        )
 
     # Open the file in append mode ('a') or create it if it doesn't exist
     with open("results_loss_tests.txt", 'a') as file:
@@ -140,7 +207,7 @@ def main():
         mapping_file="es_mapping.txt",
         performance_message="Performance Spanish subset (no emojis) with standard loss:",
         trainer_type="standard",
-        spanish_data_prep="no emojis"
+        spanish_data_prep="without emojis"
         )
 
     # Weighted loss
@@ -152,7 +219,7 @@ def main():
         mapping_file="es_mapping.txt",
         performance_message="Performance Spanish subset (no emojis) with weighted loss:",
         trainer_type="weighted",
-        spanish_data_prep="no emojis"
+        spanish_data_prep="without emojis"
         )
     
 
