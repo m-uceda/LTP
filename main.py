@@ -33,7 +33,7 @@ def main():
     #tokenizer = AutoTokenizer.from_pretrained("./fine-tuned-model-test")
 
     # Evaluate performance on test set
-    performance = evaluate_performance(trainer, tokenizer, subset_to_test)
+    performance = evaluate_performance(model, tokenizer, subset_to_test)
 
     print('Performance English dataset:', performance)
 

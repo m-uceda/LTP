@@ -30,7 +30,7 @@ def map_emojis(mapping, label):
 
 
 def change_to_pandas(data):
-    df = pd.DataFrame(data['train'])
+    df = pd.DataFrame(data)
     return df
 
 

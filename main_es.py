@@ -52,7 +52,7 @@ def main():
     trainer.train()
 
     # Evaluate performance on test set
-    performance = evaluate_performance(trainer, tokenizer, test_es_without_emojis, save_path="confusion_matrix_es_without.png")
+    performance = evaluate_performance(model, tokenizer, test_es_without_emojis, save_path="confusion_matrix_es_without.png")
 
     print('Performance Es without emojis:', performance)
 

@@ -9,6 +9,10 @@ import matplotlib.pyplot as plt
 from collections import Counter
 from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
+from exploratory_data_analysis import get_mapping, map_emojis, change_to_pandas
+from matplotlib import rcParams
+
+rcParams['font.family'] = 'Segoe UI Emoji'
 
 def get_subset(dataset, size: int) -> Dataset:
     # Convert dataset to pandas DataFrame for stratification
@@ -24,7 +28,7 @@ def get_subset(dataset, size: int) -> Dataset:
 
     return Dataset.from_pandas(train_df)
 
-def calculate_class_distribution(dataset, label_column="label", num_classes=20):
+def calculate_class_distribution(dataset, num_classes: int, label_column="label",):
     """
     Calculate the class distribution in a dataset.
 
@@ -51,8 +55,13 @@ def calculate_class_distribution(dataset, label_column="label", num_classes=20):
 class CustomTrainer(Trainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Cache class distribution during initialization
-        self.class_distribution = calculate_class_distribution(self.train_dataset)
+
+        all_labels = []
+        for data in self.train_dataset:
+            all_labels.append(data['label'])
+        n_labels = len(set(all_labels))
+
+        self.class_distribution = calculate_class_distribution(self.train_dataset, n_labels)
         total = sum(self.class_distribution)
         self.class_weights = [total / freq if freq > 0 else 0.0 for freq in self.class_distribution]
         
@@ -76,8 +85,10 @@ class CustomTrainer(Trainer):
 
         return (loss, outputs) if return_outputs else loss
 
-
-def load_model_and_tokenizer(model_name: str) -> Tuple[AutoTokenizer, AutoModelForSequenceClassification]:
+def load_model_and_tokenizer(
+        model_name: str, 
+        num_labels: int
+        ) -> Tuple[AutoTokenizer, AutoModelForSequenceClassification]:
     """
     Load a pre-trained model and tokenizer.
 
@@ -90,8 +101,8 @@ def load_model_and_tokenizer(model_name: str) -> Tuple[AutoTokenizer, AutoModelF
             - model (AutoModelForSequenceClassification): The model to load.
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    tokenizer = AutoTokenizer.from_pretrained(model_name, num_labels=20)
-    config = AutoConfig.from_pretrained(model_name, num_labels=20)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, num_labels=num_labels)
+    config = AutoConfig.from_pretrained(model_name, num_labels=num_labels)
     model = AutoModelForSequenceClassification.from_pretrained(model_name, config=config).to(device)
     return tokenizer, model
 
@@ -110,9 +121,23 @@ def load_and_split_dataset(dataset_name: str) -> Tuple[Dataset, Dataset]:
     dataset = load_dataset(dataset_name)
     train_dataset = dataset["train"]
     test_dataset = dataset["test"]
+
+    if dataset_name == "guillermoruiz/MexEmojis":
+        train_dataset = train_dataset.rename_column("text", "sentence")
+        test_dataset = test_dataset.rename_column("text", "sentence")
+
+        es_mapping = "es_mapping.txt"
+        emoji_mapping = get_mapping(es_mapping)
+
+        valid_labels = [emoji_mapping[i][1] for i in range(len(emoji_mapping))]
+        class_label = ClassLabel(names=valid_labels)
+
+        train_dataset = train_dataset.cast_column("label", class_label)
+        test_dataset = test_dataset.cast_column("label", class_label)
+
     return train_dataset, test_dataset
 
-def tokenize(dataset: Dataset, tokenizer: AutoTokenizer) -> Tuple[Dataset, Dataset]:
+def tokenize(dataset: Dataset, tokenizer: AutoTokenizer, num_classes: int, test_size: int) -> Tuple[Dataset, Dataset]:
     """
     Tokenize a dataset and split into train and validation sets.
 
@@ -131,13 +156,10 @@ def tokenize(dataset: Dataset, tokenizer: AutoTokenizer) -> Tuple[Dataset, Datas
 
     # Convert label column to ClassLabel
     if not isinstance(dataset.features["label"], ClassLabel):
-        dataset = dataset.cast_column("label", ClassLabel(num_classes=20))
+        dataset = dataset.cast_column("label", ClassLabel(num_classes=num_classes))
 
     # Stratified split
-    split = dataset.train_test_split(test_size=0.2, stratify_by_column='label')
-
-    #split = dataset.train_test_split(test_size=0.2)
-    #split = dataset.train_test_split(test_size=50000 / len(dataset['sentence']))
+    split = dataset.train_test_split(test_size=test_size, stratify_by_column='label')
 
     train_dataset = split["train"].map(preprocess_function, batched=True, batch_size=64)
     validate_dataset = split["test"].map(preprocess_function, batched=True, batch_size=64)
@@ -148,7 +170,8 @@ def get_trainer(
     model: AutoModelForSequenceClassification,
     tokenizer: AutoTokenizer,
     tokenized_train: Dataset,
-    tokenized_validate: Dataset
+    tokenized_validate: Dataset,
+    trainer_type: str
 ) -> Trainer:
     """
     Set up a Trainer for fine-tuning a model.
@@ -162,29 +185,39 @@ def get_trainer(
         Trainer: A Trainer object.
     """
     training_args = TrainingArguments(
-        output_dir="./results",          # Directory for model outputs
-        eval_strategy="epoch",    # Evaluate at the end of each epoch
-        learning_rate=2e-5,               # Learning rate
-        per_device_train_batch_size=16,    # Batch size for training
-        per_device_eval_batch_size=32,     # Batch size for evaluation
-        num_train_epochs=1,               # Number of training epochs
-        weight_decay=0.01                 # Weight decay for optimization
+        output_dir="./results",                 # Directory for model outputs
+        eval_strategy="epoch",                  # Evaluate at the end of each epoch
+        learning_rate=2e-5,                     # Learning rate
+        per_device_train_batch_size=16,             # Batch size for training
+        per_device_eval_batch_size=32,              # Batch size for evaluation
+        num_train_epochs=1,                         # Number of training epochs
+        weight_decay=0.01                           # Weight decay for optimization
     )
 
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
-    trainer = CustomTrainer(
-        model=model,
-        args=training_args,
-        train_dataset=tokenized_train,
-        eval_dataset=tokenized_validate,
-        data_collator=data_collator,
-        tokenizer=tokenizer
-    )
+    if trainer_type == "weighted":
+        trainer = CustomTrainer(
+            model=model,
+            args=training_args,
+            train_dataset=tokenized_train,
+            eval_dataset=tokenized_validate,
+            data_collator=data_collator,
+            tokenizer=tokenizer
+        )
+    else:
+        trainer = Trainer(
+            model=model,
+            args=training_args,
+            train_dataset=tokenized_train,
+            eval_dataset=tokenized_validate,
+            data_collator=data_collator,
+            tokenizer=tokenizer
+        )
 
     return trainer
 
-def evaluate_performance(model, tokenizer, test_dataset, save_path="confusion_matrix.png") -> dict:
+def evaluate_performance(model, tokenizer, test_dataset, mapping_file: str, save_path="confusion_matrix.png") -> dict:
     """
     Evaluate the performance of a model on a test dataset using multiple metrics and plot a confusion matrix.
 
@@ -226,8 +259,13 @@ def evaluate_performance(model, tokenizer, test_dataset, save_path="confusion_ma
         "f1": f1_score(all_labels, all_predictions, average="weighted")
     }
 
+    df = change_to_pandas(test_dataset)
+    emoji_mapping = get_mapping(mapping_file)
+    class_count = df["label"].value_counts()
+    em_labels = [map_emojis(emoji_mapping, label) for label in class_count.index]
+
     # Plot confusion matrix
-    plot_confusion_matrix(all_labels, all_predictions, class_names, save_path=save_path)
+    plot_confusion_matrix(all_labels, all_predictions, em_labels, save_path=save_path)
 
     return metrics
 
