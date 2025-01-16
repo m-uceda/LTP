@@ -13,7 +13,7 @@ def main():
         file_name="CM_english.png",
         mapping_file="us_mapping.txt",
         performance_message="Performance English:",
-        trainer_type="weighted",
+        trainer_type="weighted"
         )
     
     # English (only 12 classes and same amount of data as Spanish) 
