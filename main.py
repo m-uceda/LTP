@@ -16,7 +16,7 @@ def main():
         trainer_type="weighted",
         )
     
-    # English (only 12 classes and same amount of data as Spanish) !!!!!!!!!!!!!!!!!!!!!!!!
+    # English (only 12 classes and same amount of data as Spanish) 
     load_train_and_evaluate(
         model_name="google-bert/bert-base-multilingual-cased", 
         dataset_name="Karim-Gamal/SemEval-2018-Task-2-english-emojis",
@@ -25,7 +25,7 @@ def main():
         mapping_file="us_mapping.txt",
         performance_message="Performance English (subset 12 classes):",
         trainer_type="weighted",
-        train_subset_size=90765,        # VERIFY THESE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        train_subset_size=90765,        
         test_subset_size=38914
         )
 
