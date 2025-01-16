@@ -23,7 +23,7 @@ def train_and_get_performance(
         dataset=train_dataset,
         tokenizer=tokenizer,
         num_classes=num_classes,
-        test_size=100/900)
+        test_size=1/9)
 
     # Fine tune model (or retrieve by commenting next 4 lines)
     trainer = get_trainer(model, tokenizer, tokenized_train, tokenized_validate, trainer_type)
@@ -51,6 +51,8 @@ def run_loss_test(
         mapping_file: str,
         performance_message: str,
         trainer_type: str,
+        train_subset_size: int,
+        test_subset_size: int,
         spanish_data_prep: str = None
 ):
     
@@ -62,8 +64,8 @@ def run_loss_test(
 
     # Split data in train, test
     train_dataset, test_dataset = load_and_split_dataset(dataset_name=dataset_name)
-    subset_to_train = get_subset(train_dataset, size=900)
-    subset_to_test = get_subset(test_dataset, size=100)
+    subset_to_train = get_subset(train_dataset, size=train_subset_size)
+    subset_to_test = get_subset(test_dataset, size=test_subset_size)
 
     if dataset_name == "guillermoruiz/MexEmojis":
         train_es_without_emojis, train_es_with_emojis = preprocess_es_data(subset_to_train)
@@ -114,9 +116,7 @@ def run_loss_test(
             trainer_type=trainer_type
         )
 
-    # Open the file in append mode ('a') or create it if it doesn't exist
     with open("results_loss_tests.txt", 'a') as file:
-        # Add a newline and then the text
         file.write(performance_message)
         file.write('\n')
         file.write(str(performance))
@@ -124,7 +124,9 @@ def run_loss_test(
 
 def main():
     """The main method of this script."""
-    
+    train_subset_size=9000
+    test_subset_size=1000
+
     # English (standard loss)
     run_loss_test(
         model_name="google-bert/bert-base-multilingual-cased", 
@@ -133,7 +135,9 @@ def main():
         file_name="CM_english_subset_standardloss.png",
         mapping_file="us_mapping.txt",
         performance_message="Performance English subset with standard loss:",
-        trainer_type="standard"
+        trainer_type="standard",
+        train_subset_size=train_subset_size,
+        test_subset_size=test_subset_size
         )
     
     # English (weighted loss)
@@ -144,7 +148,9 @@ def main():
         file_name="CM_english_subset_weightedloss.png",
         mapping_file="us_mapping.txt",
         performance_message="Performance English subset with weighted loss:",
-        trainer_type="weighted"
+        trainer_type="weighted",
+        train_subset_size=train_subset_size,
+        test_subset_size=test_subset_size
         )
 
     # Spansih (not preprocessed)
@@ -157,6 +163,8 @@ def main():
         mapping_file="es_mapping.txt",
         performance_message="Performance Spanish subset (not prep) with standard loss:",
         trainer_type="standard",
+        train_subset_size=train_subset_size,
+        test_subset_size=test_subset_size,
         spanish_data_prep="not preprocessed"
         )
     
@@ -169,6 +177,8 @@ def main():
         mapping_file="es_mapping.txt",
         performance_message="Performance Spanish subset (not prep) with weighted loss:",
         trainer_type="weighted",
+        train_subset_size=train_subset_size,
+        test_subset_size=test_subset_size,
         spanish_data_prep="not preprocessed"
         )
 
@@ -182,6 +192,8 @@ def main():
         mapping_file="es_mapping.txt",
         performance_message="Performance Spanish subset (with emojis) with standard loss:",
         trainer_type="standard",
+        train_subset_size=train_subset_size,
+        test_subset_size=test_subset_size,
         spanish_data_prep="with emojis"
         )
 
@@ -194,6 +206,8 @@ def main():
         mapping_file="es_mapping.txt",
         performance_message="Performance Spanish subset (with emojis) with weighted loss:",
         trainer_type="weighted",
+        train_subset_size=train_subset_size,
+        test_subset_size=test_subset_size,
         spanish_data_prep="with emojis"
         )
 
@@ -207,6 +221,8 @@ def main():
         mapping_file="es_mapping.txt",
         performance_message="Performance Spanish subset (no emojis) with standard loss:",
         trainer_type="standard",
+        train_subset_size=train_subset_size,
+        test_subset_size=test_subset_size,
         spanish_data_prep="without emojis"
         )
 
@@ -219,6 +235,8 @@ def main():
         mapping_file="es_mapping.txt",
         performance_message="Performance Spanish subset (no emojis) with weighted loss:",
         trainer_type="weighted",
+        train_subset_size=train_subset_size,
+        test_subset_size=test_subset_size,
         spanish_data_prep="without emojis"
         )
     
