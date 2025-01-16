@@ -1,41 +1,70 @@
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from src.utils import load_model_and_tokenizer, load_and_split_dataset, get_trainer, tokenize, evaluate_performance, get_subset
+from src.utils import load_train_and_evaluate
 
 def main():
     """The main method of this script."""
 
-    # Load model and tokenizer
-    tokenizer, model = load_model_and_tokenizer(
-        model_name="google-bert/bert-base-multilingual-cased"
-    )
+    # REMEMBER TO CHANGE EPOCHS TO 2
 
-    # Split data in train, test
-    train_dataset, test_dataset = load_and_split_dataset("Karim-Gamal/SemEval-2018-Task-2-english-emojis")
-    subset_to_train = get_subset(train_dataset, size=90765)
-    print(' --------- Train-subset size:', len(subset_to_train['sentence']))
+    # English (entire dataset)
+    load_train_and_evaluate(
+        model_name="google-bert/bert-base-multilingual-cased", 
+        dataset_name="Karim-Gamal/SemEval-2018-Task-2-english-emojis",
+        num_classes=20,
+        file_name="CM_english.png",
+        mapping_file="us_mapping.txt",
+        performance_message="Performance English:",
+        trainer_type="weighted",
+        )
+    
+    # English (only 12 classes and same amount of data as Spanish) !!!!!!!!!!!!!!!!!!!!!!!!
+    load_train_and_evaluate(
+        model_name="google-bert/bert-base-multilingual-cased", 
+        dataset_name="Karim-Gamal/SemEval-2018-Task-2-english-emojis",
+        num_classes=12,
+        file_name="CM_english_subset_12classes.png",
+        mapping_file="us_mapping.txt",
+        performance_message="Performance English (subset 12 classes):",
+        trainer_type="weighted",
+        train_subset_size=90765,        # VERIFY THESE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        test_subset_size=38914
+        )
 
-    subset_to_test = get_subset(test_dataset, size=38914)
-    print(' --------- Test-subset size:', len(subset_to_test['sentence']))
+    # Spansih (not preprocessed)
+    load_train_and_evaluate(
+        model_name="google-bert/bert-base-multilingual-cased", 
+        dataset_name="guillermoruiz/MexEmojis",
+        num_classes=12,
+        file_name="CM_spanish_notprep.png",
+        mapping_file="es_mapping.txt",
+        performance_message="Performance Spanish (not prep):",
+        trainer_type="weighted",
+        spanish_data_prep="not preprocessed"
+        )
 
-    #subset_to_train = subset_to_train.select(range(1000))
-    #subset_to_test = subset_to_test.select(range(300))
+    # Spansih (preprocessed with emojis)
+    load_train_and_evaluate(
+        model_name="google-bert/bert-base-multilingual-cased", 
+        dataset_name="guillermoruiz/MexEmojis",
+        num_classes=12,
+        file_name="CM_spanish_emojis.png",
+        mapping_file="es_mapping.txt",
+        performance_message="Performance Spanish (with emojis):",
+        trainer_type="weighted",
+        spanish_data_prep="with emojis"
+        )
 
-    # Tokenize data and extract validation set
-    tokenized_train, tokenized_validate = tokenize(subset_to_train, tokenizer)
-
-    # Fine tune model (or retrieve by commenting next 4 lines)
-    trainer = get_trainer(model, tokenizer, tokenized_train, tokenized_validate)
-    trainer.train()
-    #model.save_pretrained("./fine-tuned-model-test")
-    #tokenizer.save_pretrained("./fine-tuned-model-test")
-
-    #fine_tuned_model = AutoModelForSequenceClassification.from_pretrained("./fine-tuned-model-test")
-    #tokenizer = AutoTokenizer.from_pretrained("./fine-tuned-model-test")
-
-    # Evaluate performance on test set
-    performance = evaluate_performance(model, tokenizer, subset_to_test)
-
-    print('Performance English dataset:', performance)
+    # Spansih (preprocessed without emojis)
+    load_train_and_evaluate(
+        model_name="google-bert/bert-base-multilingual-cased", 
+        dataset_name="guillermoruiz/MexEmojis",
+        num_classes=12,
+        file_name="CM_spanish_noemojis.png",
+        mapping_file="es_mapping.txt",
+        performance_message="Performance Spanish (no emojis):",
+        trainer_type="weighted",
+        spanish_data_prep="without emojis"
+        )
+    
 
 if __name__ == "__main__":
     main()

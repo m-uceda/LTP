@@ -9,10 +9,175 @@ import matplotlib.pyplot as plt
 from collections import Counter
 from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
-from exploratory_data_analysis import get_mapping, map_emojis, change_to_pandas
+from exploratory_data_analysis import get_mapping, map_emojis, change_to_pandas, class_distribution, preprocess_es_data
 from matplotlib import rcParams
+import os
 
 rcParams['font.family'] = 'Segoe UI Emoji'
+
+def reduce_num_classes(dataset):
+    df = change_to_pandas(dataset)
+
+    # Load emoji mapping
+    en_mapping_path = "us_mapping.txt"
+    emoji_mapping = get_mapping(en_mapping_path)
+
+    # Filter dataset to retain only the top 12 classes
+    filtered_df, top_classes = filter_top_classes(df, num_classes=12)
+    print(f"Top classes: {top_classes}")
+
+    # Visualize class distribution after filtering
+    class_distribution(filtered_df, emoji_mapping, "English (Filtered)")
+
+    # Convert filtered df back to Dataset
+    filtered_df = filtered_df.reset_index(drop=True)
+    return Dataset.from_pandas(filtered_df)
+
+
+def filter_top_classes(df, num_classes=12):
+    """
+    Filters the dataset to only include the top N most abundant classes.
+    Args:
+        df: The pandas DataFrame containing the dataset.
+        num_classes: Number of top classes to retain.
+    Returns:
+        filtered_df: Filtered DataFrame containing only the top N classes.
+        top_classes: List of the top N class labels.
+    """
+    # Get label distribution
+    label_counts = df["label"].value_counts()
+    # Identify top N classes
+    top_classes = label_counts.index[:num_classes]
+    # Filter dataset to keep only top N classes
+    filtered_df = df[df["label"].isin(top_classes)].copy()
+    # Map labels to new indices (0 to num_classes-1)
+    class_mapping = {label: idx for idx, label in enumerate(top_classes)}
+    filtered_df["label"] = filtered_df["label"].map(class_mapping)
+    return filtered_df, top_classes
+
+def train_and_get_performance(
+        train_dataset: Dataset,
+        test_dataset: Dataset,
+        tokenizer: AutoTokenizer, 
+        num_classes: int,
+        model: AutoModelForSequenceClassification,
+        file_name: str,
+        mapping_file: str,
+        trainer_type: str
+    ):
+    """
+    
+    """
+    # Tokenize data and extract validation set
+    tokenized_train, tokenized_validate = tokenize(
+        dataset=train_dataset,
+        tokenizer=tokenizer,
+        num_classes=num_classes,
+        test_size=1/9)      # VERIFY THIS!!!!!!!!!!!!!!!!!!
+
+    # Fine tune model
+    trainer = get_trainer(model, tokenizer, tokenized_train, tokenized_validate, trainer_type)
+    trainer.train()
+
+    folder_path = "confusion matrices (final results)"
+    os.makedirs(folder_path, exist_ok=True)
+    sav_path = os.path.join(folder_path, file_name)
+
+    # Evaluate performance on test set
+    performance = evaluate_performance(
+        model=model, 
+        tokenizer=tokenizer, 
+        test_dataset=test_dataset,
+        mapping_file=mapping_file,
+        save_path=sav_path)
+
+    return performance
+
+def load_train_and_evaluate(
+        model_name: str, 
+        dataset_name: str,
+        num_classes: int,
+        file_name: str,
+        mapping_file: str,
+        performance_message: str,
+        trainer_type: str,
+        train_subset_size: int = None,
+        test_subset_size: int = None,
+        spanish_data_prep: str = None
+):
+    
+    # Load model and tokenizer
+    tokenizer, model = load_model_and_tokenizer(
+        model_name=model_name,
+        num_labels=num_classes
+    )
+
+    # Split data in train, test
+    train_dataset, test_dataset = load_and_split_dataset(dataset_name=dataset_name)
+    if (not (train_subset_size == None)) and not (train_subset_size == None):
+        subset_to_train = get_subset(train_dataset, size=train_subset_size)
+        subset_to_test = get_subset(test_dataset, size=test_subset_size)
+    else:
+        subset_to_train = train_dataset
+        subset_to_test = test_dataset
+
+    if dataset_name == "guillermoruiz/MexEmojis":
+        train_es_without_emojis, train_es_with_emojis = preprocess_es_data(subset_to_train)
+        test_es_without_emojis, test_es_with_emojis = preprocess_es_data(subset_to_test)
+    elif num_classes == 12:
+        subset_to_train = reduce_num_classes(subset_to_train)
+        subset_to_test = reduce_num_classes(subset_to_test)
+
+    if spanish_data_prep == None:
+        performance = train_and_get_performance(
+            train_dataset=subset_to_train,
+            test_dataset=subset_to_test,
+            tokenizer=tokenizer, 
+            num_classes=num_classes,
+            model=model,
+            file_name=file_name,
+            mapping_file=mapping_file,
+            trainer_type=trainer_type
+        )
+    elif spanish_data_prep == "not preprocessed":
+        performance = train_and_get_performance(
+            train_dataset=subset_to_train,
+            test_dataset=subset_to_test,
+            tokenizer=tokenizer, 
+            num_classes=num_classes,
+            model=model,
+            file_name=file_name,
+            mapping_file=mapping_file,
+            trainer_type=trainer_type
+        )
+    elif spanish_data_prep == "with emojis":
+        performance = train_and_get_performance(
+            train_dataset=train_es_with_emojis,
+            test_dataset=test_es_with_emojis,
+            tokenizer=tokenizer, 
+            num_classes=num_classes,
+            model=model,
+            file_name=file_name,
+            mapping_file=mapping_file,
+            trainer_type=trainer_type
+        )
+    elif spanish_data_prep == "without emojis":
+        performance = train_and_get_performance(
+            train_dataset=train_es_without_emojis,
+            test_dataset=test_es_without_emojis,
+            tokenizer=tokenizer, 
+            num_classes=num_classes,
+            model=model,
+            file_name=file_name,
+            mapping_file=mapping_file,
+            trainer_type=trainer_type
+        )
+
+    with open("final_results.txt", 'a') as file:
+        file.write(performance_message)
+        file.write('\n')
+        file.write(str(performance))
+        file.write('\n\n')
 
 def get_subset(dataset, size: int) -> Dataset:
     # Convert dataset to pandas DataFrame for stratification

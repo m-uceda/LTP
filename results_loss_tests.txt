@@ -1,3 +1,5 @@
+Training size: 1000
+--------------------
 Performance English subset with standard loss:
 {'accuracy': 0.22, 'precision': 0.0484, 'recall': 0.22, 'f1': 0.07934426229508197}
 
@@ -21,4 +23,19 @@ Performance Spanish subset (no emojis) with standard loss:
 
 Performance Spanish subset (no emojis) with weighted loss:
 {'accuracy': 0.21, 'precision': 0.08886645962732921, 'recall': 0.21, 'f1': 0.11810595065312046}
+
+
+Training size: 10000
+--------------------
+Performance English subset with standard loss:
+{'accuracy': 0.32, 'precision': 0.2268320718768385, 'recall': 0.32, 'f1': 0.24135714673931988}
+
+Performance English subset with weighted loss:
+{'accuracy': 0.139, 'precision': 0.10628807762679485, 'recall': 0.139, 'f1': 0.08738604611060613}
+
+Performance Spanish subset (not prep) with standard loss:
+{'accuracy': 0.382, 'precision': 0.29153272328379987, 'recall': 0.382, 'f1': 0.2777548366219246}
+
+Performance Spanish subset (not prep) with weighted loss:
+{'accuracy': 0.358, 'precision': 0.34994296224218674, 'recall': 0.358, 'f1': 0.3430379807849249}
 
