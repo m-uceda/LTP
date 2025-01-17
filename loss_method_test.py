@@ -6,7 +6,7 @@ def main():
     test_subset_size=1000
 
     # English (standard loss)
-    run_loss_test(
+    load_train_and_evaluate(
         model_name="google-bert/bert-base-multilingual-cased", 
         dataset_name="Karim-Gamal/SemEval-2018-Task-2-english-emojis",
         num_classes=20,
