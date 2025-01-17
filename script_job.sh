@@ -2,7 +2,7 @@
 
 #SBATCH --nodes=1
 #SBATCH --job-name=lossTest
-#SBATCH --time=10:00:00
+#SBATCH --time=78:00:00
 #SBATCH --mem=500000
 
 
@@ -15,6 +15,6 @@ python -m venv ltpEnvironment
 source ltpEnvironment/bin/activate
 pip install -r requirements.txt
 
-PYTHON_SCRIPT="./main_es_without.py"
+PYTHON_SCRIPT="./main.py"
 
 python3 "$PYTHON_SCRIPT"
