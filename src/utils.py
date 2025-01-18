@@ -71,7 +71,7 @@ def load_train_and_evaluate(
         file_name (str): Name of the file in which the confusion matrix will be saved.
         mapping_file (str): Name of the file used for mapping the emojis.
         performance_message (str): Message that will precede the printed performance.
-        trainer_type (str): Type of trainer to be used ('weighter' or 'standard').
+        trainer_type (str): Type of trainer to be used ('weighted' or 'standard').
         train_subset_size (int): Number of samples used for training.
         test_subset_size (int): Number of samples used for testing.
         spanish_data_prep (str): Type of preprocessing used for the Spanish dataset.
@@ -171,7 +171,7 @@ def train_and_get_performance(
         model (AutoModelForSequenceClassification): Model to be fine-tuned.
         file_name (str): Name of the file in which the confusion matrix will be saved.
         mapping_file (str): Name of the file used for mapping the emojis.
-        trainer_type (str): Type of trainer to be used ('weighter' or 'standard').
+        trainer_type (str): Type of trainer to be used ('weighted' or 'standard').
     
     Returns:
         Dictionary containing performance of the model on the test set.
@@ -324,7 +324,7 @@ def get_trainer(
         tokenizer (AutoTokenizer): The tokenizer to use for tokenizing.
         tokenized_train (Dataset): The tokenized training dataset.
         tokenized_validate (Dataset): The tokenized validation dataset.
-        trainer_type (str): Type of trainer to be used ('weighter' or 'standard').
+        trainer_type (str): Type of trainer to be used ('weighted' or 'standard').
 
     Returns:
         Trainer: A Trainer object.
@@ -333,10 +333,12 @@ def get_trainer(
         output_dir="./results",                 # Directory for model outputs
         eval_strategy="epoch",                  # Evaluate at the end of each epoch
         learning_rate=2e-5,                     # Learning rate
-        per_device_train_batch_size=16,             # Batch size for training
-        per_device_eval_batch_size=32,              # Batch size for evaluation
-        num_train_epochs=1,                         # Number of training epochs
-        weight_decay=0.01                           # Weight decay for optimization
+        per_device_train_batch_size=16,         # Batch size for training
+        per_device_eval_batch_size=32,          # Batch size for evaluation
+        num_train_epochs=1,                     # Number of training epochs
+        weight_decay=0.01,                      # Weight decay for optimization
+        save_strategy="epoch",                  # Save once per epoch instead of every few steps
+        save_total_limit=1                      # Keep only the latest checkpoint
     )
 
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
