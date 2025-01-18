@@ -28,7 +28,7 @@ class CustomTrainer(Trainer):
         self.class_distribution = calculate_class_distribution(self.train_dataset, n_labels)
         total = sum(self.class_distribution)
         self.class_weights = [total / freq if freq > 0 else 0.0 for freq in self.class_distribution]
-        
+
         # Normalize class weights
         max_weight = max(self.class_weights)
         self.class_weights = [weight / max_weight for weight in self.class_weights]
@@ -444,7 +444,7 @@ def evaluate_performance(
         test_dataset: Dataset, 
         mapping_file: str, 
         save_path: str = "confusion_matrix.png"
-    )-> dict:
+    ) -> dict:
     """
     Evaluate the performance of a model on a test dataset using multiple metrics and plot a confusion matrix.
 
@@ -458,7 +458,9 @@ def evaluate_performance(
     Returns:
         dict: A dictionary containing the computed metrics and their values.
     """
-
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    
     all_labels = []
     all_predictions = []
 
@@ -466,7 +468,7 @@ def evaluate_performance(
         input_string = data['sentence']
         label = data['label']
 
-        inputs = tokenizer(input_string, return_tensors="pt", padding=True)
+        inputs = tokenizer(input_string, return_tensors="pt", padding=True).to(device)
 
         with torch.no_grad():
             outputs = model(**inputs)
