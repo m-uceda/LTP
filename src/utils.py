@@ -335,7 +335,7 @@ def get_trainer(
         learning_rate=2e-5,                     # Learning rate
         per_device_train_batch_size=16,         # Batch size for training
         per_device_eval_batch_size=32,          # Batch size for evaluation
-        num_train_epochs=1,                     # Number of training epochs
+        num_train_epochs=2,                     # Number of training epochs
         weight_decay=0.01,                      # Weight decay for optimization
         save_strategy="epoch",                  # Save once per epoch instead of every few steps
         save_total_limit=1                      # Keep only the latest checkpoint

@@ -2,8 +2,7 @@ from src.utils import load_train_and_evaluate
 
 def main():
     """The main method of this script."""
-
-    # REMEMBER TO CHANGE EPOCHS TO 2
+    trainer_type = 'weighted'
 
     # English (entire dataset)
     load_train_and_evaluate(
@@ -13,7 +12,7 @@ def main():
         file_name="CM_english.png",
         mapping_file="us_mapping.txt",
         performance_message="Performance English:",
-        trainer_type="weighted"
+        trainer_type=trainer_type
         )
     
     # English (only 12 classes and same amount of data as Spanish) 
@@ -24,7 +23,7 @@ def main():
         file_name="CM_english_subset_12classes.png",
         mapping_file="us_mapping.txt",
         performance_message="Performance English (subset 12 classes):",
-        trainer_type="weighted",
+        trainer_type=trainer_type,
         train_subset_size=90765,        
         test_subset_size=38914
         )
@@ -37,7 +36,7 @@ def main():
         file_name="CM_spanish_notprep.png",
         mapping_file="es_mapping.txt",
         performance_message="Performance Spanish (not prep):",
-        trainer_type="weighted",
+        trainer_type=trainer_type,
         spanish_data_prep="not preprocessed"
         )
 
@@ -49,7 +48,7 @@ def main():
         file_name="CM_spanish_emojis.png",
         mapping_file="es_mapping.txt",
         performance_message="Performance Spanish (with emojis):",
-        trainer_type="weighted",
+        trainer_type=trainer_type,
         spanish_data_prep="with emojis"
         )
 
@@ -61,7 +60,7 @@ def main():
         file_name="CM_spanish_noemojis.png",
         mapping_file="es_mapping.txt",
         performance_message="Performance Spanish (no emojis):",
-        trainer_type="weighted",
+        trainer_type=trainer_type,
         spanish_data_prep="without emojis"
         )
     
