@@ -2,7 +2,7 @@ from src.utils import load_train_and_evaluate
 
 def main():
     """The main method of this script."""
-    trainer_type = 'weighted'
+    trainer_type = 'standard'
 
     # English (entire dataset)
     load_train_and_evaluate(

@@ -181,7 +181,7 @@ def train_and_get_performance(
         dataset=train_dataset,
         tokenizer=tokenizer,
         num_classes=num_classes,
-        test_size=1/9)      # VERIFY THIS!!!!!!!!!!!!!!!!!!
+        test_size=1/9)      
 
     # Fine tune model
     trainer = get_trainer(model, tokenizer, tokenized_train, tokenized_validate, trainer_type)
@@ -303,7 +303,7 @@ def get_subset(dataset: Dataset, size: int) -> Dataset:
     train_df, _ = train_test_split(
         df,
         train_size=size,
-        stratify=df['label'],  # Column to stratify by
+        stratify=df['label'], 
         random_state=42
     )
 
@@ -337,7 +337,7 @@ def get_trainer(
         per_device_eval_batch_size=32,          # Batch size for evaluation
         num_train_epochs=2,                     # Number of training epochs
         weight_decay=0.01,                      # Weight decay for optimization
-        save_strategy="epoch",                  # Save once per epoch instead of every few steps
+        save_strategy="epoch",                  # Save once per epoch
         save_total_limit=1                      # Keep only the latest checkpoint
     )
 
@@ -408,7 +408,7 @@ def filter_top_classes(df: pd.DataFrame, num_classes: int = 12) -> Tuple[pd.Data
     top_classes = label_counts.index[:num_classes]
     # Filter dataset to keep only top N classes
     filtered_df = df[df["label"].isin(top_classes)].copy()
-    # Map labels to new indices (0 to num_classes-1)
+    # Map labels to new indices
     class_mapping = {label: idx for idx, label in enumerate(top_classes)}
     filtered_df["label"] = filtered_df["label"].map(class_mapping)
 
@@ -433,7 +433,7 @@ def calculate_class_distribution(dataset: Dataset, num_classes: int, label_colum
     # Count the occurrences of each label
     label_counts = Counter(labels)
     
-    # Create a list with counts for each class (0 to num_classes - 1)
+    # Create a list with counts for each class
     class_distribution = [label_counts.get(i, 0) for i in range(num_classes)]
     
     return class_distribution
@@ -478,10 +478,6 @@ def evaluate_performance(
 
         all_labels.append(label)
         all_predictions.append(predicted_label)
-
-    # Determine class names from the labels
-    n_labels = len(set(all_labels))
-    class_names = [str(i) for i in range(n_labels)]
 
     metrics = {
         "accuracy": accuracy_score(all_labels, all_predictions),

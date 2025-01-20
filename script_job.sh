@@ -1,9 +1,11 @@
 #!/bin/sh
 
-#SBATCH --nodes=1
-#SBATCH --job-name=lossTest
-#SBATCH --time=78:00:00
-#SBATCH --mem=500000
+
+#SBATCH --job-name=standard(gpu)
+#SBATCH --time=24:00:00
+#SBATCH --gpus-per-node=1
+#SBATCH --partition=gpu
+#SBATCH --mem=8000
 
 
 nvidia-smi
@@ -11,9 +13,7 @@ nvidia-smi
 module load Python/3.11.5-GCCcore-13.2.0
 module load CUDA/12.1.1
 
-python -m venv ltpEnvironment
 source ltpEnvironment/bin/activate
-pip install -r requirements.txt
 
 PYTHON_SCRIPT="./main.py"
 

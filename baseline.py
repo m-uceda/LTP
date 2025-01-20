@@ -77,7 +77,7 @@ def run_baseline(
     test_labels = [example["label"] for example in test_dataset]
 
     # Convert text to numerical features using TF-IDF
-    vectorizer = TfidfVectorizer(max_features=5000)  # Limit features for simplicity
+    vectorizer = TfidfVectorizer(max_features=5000)
     X_train = vectorizer.fit_transform(train_texts)
     X_test = vectorizer.transform(test_texts)
 
