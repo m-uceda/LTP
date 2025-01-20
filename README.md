@@ -31,7 +31,7 @@ This repository hosts the code for the Language Technology Practical Project of 
     python3 main.py
     ```
 
-2. **Evaluation metrics** are available in the final_results.txt file once the script executed. Additionally, several confusion matrices generated, and can be found in the folder under the name ```'confusion matrices'```. After running the code we organized the results obtained in the ```'baseline'``` folder and the ```'final results'``` folder (where results for both the standard and the weighted models can be found).
+2. **Evaluation metrics** are available in the final_results.txt file once the script executed. Additionally, several confusion matrices generated, and can be found in the folder under the name ```'confusion matrices'```. After running the code we organized the results obtained in the ```'baseline results'``` folder and the ```'final results'``` folder (where results for both the standard and the weighted models can be found).
 
 ## Code
 Almost all code is implemeneted in the ```src``` directory. The directory contains a file named ```utils.py``` with all the necessary functions for the task:
